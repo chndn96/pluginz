@@ -1,0 +1,10 @@
+# Don’t ignore .gitignore
+!.gitignore
+
+# Ignore everything else
+*
+
+# Allow wp-content/plugins
+!wp-content/
+!wp-content/plugins/
+!wp-content/plugins/**/*
