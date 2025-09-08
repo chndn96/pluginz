@@ -1,0 +1,296 @@
+/**
+ * WooCommerce Dolibarr Integration - Admin Styles
+ *
+ * @package WC_Dolibarr_Integration
+ * @since 1.0.0
+ */
+
+/* Connection Status Indicators */
+.wc-dolibarr-connection-status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.wc-dolibarr-connection-status.connected {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.wc-dolibarr-connection-status.disconnected {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Sync Status Indicators */
+.status-success {
+    color: #155724;
+    font-weight: 600;
+}
+
+.status-error {
+    color: #721c24;
+    font-weight: 600;
+}
+
+.status-pending {
+    color: #856404;
+    font-weight: 600;
+}
+
+.status-skipped {
+    color: #6c757d;
+    font-weight: 600;
+}
+
+/* Dashboard Widget */
+.wc-dolibarr-dashboard-widget {
+    padding: 10px 0;
+}
+
+.wc-dolibarr-dashboard-widget p {
+    margin: 8px 0;
+}
+
+.wc-dolibarr-dashboard-widget .dashicons {
+    margin-right: 5px;
+}
+
+/* Settings Page */
+.wc-dolibarr-settings-page .nav-tab-wrapper {
+    margin-bottom: 20px;
+}
+
+.wc-dolibarr-settings-page .tab-content {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+/* Test Connection Results */
+#connection-result {
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+#connection-result.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+#connection-result.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Sync Results */
+#sync-result {
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+#sync-result.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+#sync-result.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+#sync-result.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+/* Loading States */
+.wc-dolibarr-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.wc-dolibarr-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: wc-dolibarr-spin 1s linear infinite;
+}
+
+@keyframes wc-dolibarr-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Sync Logs Table */
+.wc-dolibarr-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.wc-dolibarr-logs-table th,
+.wc-dolibarr-logs-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.wc-dolibarr-logs-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.wc-dolibarr-logs-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Progress Bars */
+.wc-dolibarr-progress {
+    width: 100%;
+    height: 20px;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.wc-dolibarr-progress-bar {
+    height: 100%;
+    background-color: #0073aa;
+    transition: width 0.3s ease;
+    text-align: center;
+    line-height: 20px;
+    color: white;
+    font-size: 12px;
+}
+
+/* Statistics Cards */
+.wc-dolibarr-stats-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.wc-dolibarr-stat-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.wc-dolibarr-stat-card h3 {
+    margin: 0 0 10px 0;
+    color: #23282d;
+    font-size: 18px;
+}
+
+.wc-dolibarr-stat-number {
+    font-size: 32px;
+    font-weight: 600;
+    color: #0073aa;
+    margin: 10px 0;
+}
+
+.wc-dolibarr-stat-label {
+    color: #666;
+    font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .wc-dolibarr-stats-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .wc-dolibarr-logs-table {
+        font-size: 14px;
+    }
+    
+    .wc-dolibarr-logs-table th,
+    .wc-dolibarr-logs-table td {
+        padding: 6px 8px;
+    }
+}
+
+/* Form Enhancements */
+.wc-dolibarr-settings-page .form-table th {
+    width: 200px;
+    padding: 20px 10px 20px 0;
+}
+
+.wc-dolibarr-settings-page .form-table td {
+    padding: 15px 10px;
+}
+
+.wc-dolibarr-settings-page .description {
+    font-style: italic;
+    color: #666;
+}
+
+/* Button Enhancements */
+.wc-dolibarr-button-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.wc-dolibarr-button-group .button {
+    margin: 0;
+}
+
+/* Notice Styling */
+.wc-dolibarr-notice {
+    padding: 12px;
+    margin: 15px 0;
+    border-left: 4px solid;
+    border-radius: 0 4px 4px 0;
+}
+
+.wc-dolibarr-notice.success {
+    background-color: #d4edda;
+    color: #155724;
+    border-left-color: #28a745;
+}
+
+.wc-dolibarr-notice.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-left-color: #dc3545;
+}
+
+.wc-dolibarr-notice.warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border-left-color: #ffc107;
+}
+
+.wc-dolibarr-notice.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border-left-color: #17a2b8;
+}
