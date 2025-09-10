@@ -82,6 +82,7 @@ class WC_Dolibarr_Order_Sync {
 	 * @return array|WP_Error
 	 */
 	public function sync_order( $order ) {
+		
 		if (is_numeric($order)) {
 			$order = wc_get_order($order);
 		}
@@ -101,10 +102,9 @@ class WC_Dolibarr_Order_Sync {
 		if (is_wp_error($customer_result)) {
 			return $customer_result;
 		}
-
 		$dolibarr_order_id = wc_dolibarr_get_order_dolibarr_id($order);
 		$order_data = wc_dolibarr_format_order_data($order);
-
+		
 		// Set customer ID from sync result
 		if (isset($customer_result['dolibarr_id'])) {
 			$order_data['socid'] = $customer_result['dolibarr_id'];
@@ -193,6 +193,8 @@ class WC_Dolibarr_Order_Sync {
 	 * @return array|WP_Error
 	 */
 	private function create_guest_customer( $order ) {
+		$country_code = $order->get_billing_country();
+		$country_id = wc_dolibarr_get_country_id($country_code);
 		$customer_data = array(
 			'name' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
 			'firstname' => $order->get_billing_first_name(),
@@ -202,11 +204,11 @@ class WC_Dolibarr_Order_Sync {
 			'address' => $order->get_billing_address_1(),
 			'zip' => $order->get_billing_postcode(),
 			'town' => $order->get_billing_city(),
-			'country_code' => $order->get_billing_country(),
+			'country_id' => $country_id,
 			'client' => 1,
 			'status' => 1,
+			'code_client' => 'WC' . $order->get_id() . '-' . time(),
 		);
-
 		if ($order->get_billing_company()) {
 			$customer_data['name'] = $order->get_billing_company();
 			$customer_data['name_alias'] = $customer_data['firstname'] . ' ' . $customer_data['lastname'];
@@ -214,7 +216,7 @@ class WC_Dolibarr_Order_Sync {
 		}
 
 		$result = $this->api->create_customer($customer_data);
-		
+
 		if (is_wp_error($result)) {
 			return $result;
 		}
@@ -243,6 +245,7 @@ class WC_Dolibarr_Order_Sync {
 			'order' => 'DESC',
 		);
 
+
 		$orders = wc_get_orders($args);
 		$results = array(
 			'total' => count($orders),
@@ -253,10 +256,8 @@ class WC_Dolibarr_Order_Sync {
 		);
 
 		$this->logger->log(sprintf('Starting bulk order sync for %d orders.', count($orders)), 'info');
-
 		foreach ($orders as $order) {
 			$result = $this->sync_order($order);
-
 			if (is_wp_error($result)) {
 				$results['errors']++;
 				$results['details'][] = array(

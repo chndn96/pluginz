@@ -61,15 +61,12 @@ class WC_Dolibarr_API {
 		if (empty($this->api_url) || empty($this->api_key)) {
 			return new WP_Error('missing_credentials', __('Dolibarr API credentials not configured.', 'wc-dolibarr'));
 		}
-
 		$url = trailingslashit($this->api_url) . 'api/index.php' . $endpoint;
-
 		$default_headers = array(
 			'DOLAPIKEY' => $this->api_key,
 			'Content-Type' => 'application/json',
 			'Accept' => 'application/json',
 		);
-
 		$headers = array_merge($default_headers, $headers);
 
 		$args = array(
@@ -93,9 +90,7 @@ class WC_Dolibarr_API {
 				)
 			);
 		}
-
 		$response = wp_remote_request($url, $args);
-
 		if (is_wp_error($response)) {
 			if ($this->logger) {
 				$this->logger->log(
@@ -287,7 +282,7 @@ class WC_Dolibarr_API {
 	 * @return array|WP_Error
 	 */
 	public function get_customers( $params = array() ) {
-		$endpoint = '/customers';
+		$endpoint = '/thirdparties';
 		
 		if (!empty($params)) {
 			$endpoint .= '?' . http_build_query($params);
@@ -304,7 +299,7 @@ class WC_Dolibarr_API {
 	 * @return array|WP_Error
 	 */
 	public function get_customer( $customer_id ) {
-		return $this->request('/customers/' . $customer_id);
+		return $this->request('/thirdparties/' . $customer_id);
 	}
 
 	/**
@@ -315,7 +310,7 @@ class WC_Dolibarr_API {
 	 * @return array|WP_Error
 	 */
 	public function create_customer( $customer_data ) {
-		return $this->request('/customers', 'POST', $customer_data);
+		return $this->request('/thirdparties', 'POST', $customer_data);
 	}
 
 	/**
@@ -327,7 +322,7 @@ class WC_Dolibarr_API {
 	 * @return array|WP_Error
 	 */
 	public function update_customer( $customer_id, $customer_data ) {
-		return $this->request('/customers/' . $customer_id, 'PUT', $customer_data);
+		return $this->request('/thirdparties/' . $customer_id, 'PUT', $customer_data);
 	}
 
 	/**

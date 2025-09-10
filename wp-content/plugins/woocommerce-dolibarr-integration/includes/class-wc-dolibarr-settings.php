@@ -749,7 +749,8 @@ class WC_Dolibarr_Settings {
 			if (is_wp_error($result)) {
 				wp_send_json_error($result->get_error_message());
 			} else {
-				wp_send_json_success(__('Customer sync completed successfully.', 'wc-dolibarr'));
+			 wp_send_json_success($result);
+				// wp_send_json_success(__('Customer sync completed successfully.', 'wc-dolibarr'));
 			}
 		} else {
 			wp_send_json_error(__('Customer sync class not available.', 'wc-dolibarr'));
@@ -767,11 +768,11 @@ class WC_Dolibarr_Settings {
 		if (class_exists('WC_Dolibarr_Order_Sync')) {
 			$order_sync = new WC_Dolibarr_Order_Sync();
 			$result = $order_sync->sync_all_orders();
-			
 			if (is_wp_error($result)) {
 				wp_send_json_error($result->get_error_message());
 			} else {
-				wp_send_json_success(__('Order sync completed successfully.', 'wc-dolibarr'));
+				wp_send_json_success($result);
+				// wp_send_json_success(__('Order sync completed successfully.', 'wc-dolibarr'));
 			}
 		} else {
 			wp_send_json_error(__('Order sync class not available.', 'wc-dolibarr'));
@@ -793,7 +794,8 @@ class WC_Dolibarr_Settings {
 			if (is_wp_error($result)) {
 				wp_send_json_error($result->get_error_message());
 			} else {
-				wp_send_json_success(__('Product sync completed successfully.', 'wc-dolibarr'));
+				wp_send_json_success($result);
+				// wp_send_json_success(__('Product sync completed successfully.', 'wc-dolibarr'));
 			}
 		} else {
 			wp_send_json_error(__('Product sync class not available.', 'wc-dolibarr'));

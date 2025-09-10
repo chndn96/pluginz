@@ -108,7 +108,6 @@ class WC_Dolibarr_Customer_Sync {
 		// Check if customer already exists in Dolibarr
 		$dolibarr_id = wc_dolibarr_get_customer_dolibarr_id($customer);
 		$customer_data = wc_dolibarr_format_customer_data($customer);
-
 		try {
 			if ($dolibarr_id) {
 				// Update existing customer
