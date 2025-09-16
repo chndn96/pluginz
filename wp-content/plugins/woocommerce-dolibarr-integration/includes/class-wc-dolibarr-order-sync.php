@@ -101,7 +101,16 @@ class WC_Dolibarr_Order_Sync {
 			return $customer_result;
 		}
 		foreach ($order->get_items() as $item_id => $item) {
-			$product = $item->get_product();
+			$product = null;
+			if ($item instanceof WC_Order_Item_Product) {
+				$product = $item->get_product();
+				if (!$product) {
+					$product_id = $item->get_product_id();
+					if ($product_id) {
+						$product = wc_get_product($product_id);
+					}
+				}
+			}
 			if ($product) {
 				$product_result = $this->ensure_product_synced($product);
 				if (is_wp_error($product_result)) {
@@ -141,6 +150,9 @@ class WC_Dolibarr_Order_Sync {
 			wc_dolibarr_set_order_dolibarr_id($order, $dolibarr_order_id);
 			wc_dolibarr_update_order_meta($order, '_dolibarr_last_sync', wc_dolibarr_get_current_timestamp());
 
+			// Persist to order sync history table for dashboard
+			$this->save_sync_history($order->get_id(), $dolibarr_order_id, 'success', 'order','');
+
 			$message = sprintf(__('Order %s successfully.', 'wc-dolibarr'), $action);
 			$this->logger->log_sync('order', $order->get_id(), $dolibarr_order_id, 'success', $message);
 
@@ -154,8 +166,31 @@ class WC_Dolibarr_Order_Sync {
 		} catch (Exception $e) {
 			$error_message = sprintf(__('Order sync failed: %s', 'wc-dolibarr'), $e->getMessage());
 			$this->logger->log_sync('order', $order->get_id(), $dolibarr_order_id, 'error', $error_message);
+			$this->save_sync_history($order->get_id(), $dolibarr_order_id, 'error', 'order', $e->getMessage());
 			return new WP_Error('sync_error', $error_message);
 		}
+	}
+
+	/**
+	 * Save order sync history for dashboard
+	 */
+	private function save_sync_history( $wc_order_id, $dolibarr_order_id, $status, $sync_type, $error_message = '' ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'wc_dolibarr_order_sync_history';
+		$wpdb->replace(
+			$table,
+			array(
+				'order_id' => $wc_order_id,
+				'dolibarr_order_id' => $dolibarr_order_id,
+				'sync_status' => $status,
+				'sync_type' => $sync_type,
+				'error_message' => $error_message,
+				'last_sync_at' => wc_dolibarr_get_current_timestamp(),
+			),
+			array(
+				'%d','%s','%s','%s','%s','%s'
+			)
+		);
 	}
 
 	/**
@@ -264,6 +299,9 @@ class WC_Dolibarr_Order_Sync {
 		$result = $this->api->create_customer($customer_data);
 		if (is_wp_error($result)) {
 			return $result;
+		}else{
+			$this->save_sync_history($order->get_id(), (int) $result,'success','customer', '');
+			$this->logger->log_sync('customer', $result, $result, 'success', 'Guest customer created sucessfully');
 		}
 
 		return array( 'dolibarr_id' => (int) ($result ?? 0) );

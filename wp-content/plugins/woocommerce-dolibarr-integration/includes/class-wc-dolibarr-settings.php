@@ -53,6 +53,11 @@ class WC_Dolibarr_Settings {
 		add_action('wp_ajax_wc_dolibarr_sync_inventory', array( $this, 'ajax_sync_inventory' )); //export
 		add_action('wp_ajax_wc_dolibarr_sync_import_inventory', array( $this, 'ajax_import_inventory' )); //import
 
+		// Dashboard & logs AJAX endpoints
+		add_action('wp_ajax_wc_dolibarr_get_dashboard_stats', array( $this, 'get_dashboard_stats' ));
+		add_action('wp_ajax_wc_dolibarr_get_order_sync_history', array( $this, 'get_order_sync_history' ));
+		add_action('wp_ajax_wc_dolibarr_resync_order', array( $this, 'resync_order' ));
+
 	}
 
 	/**
@@ -62,6 +67,7 @@ class WC_Dolibarr_Settings {
 	 */
 	private function init_tabs() {
 		$this->tabs = array(
+			'dashboard' => __('Dashboard', 'wc-dolibarr'),
 			'api' => __('API Settings', 'wc-dolibarr'),
 			'company' => __('Company Settings', 'wc-dolibarr'),
 			'sync' => __('Sync Settings', 'wc-dolibarr'),
@@ -70,7 +76,7 @@ class WC_Dolibarr_Settings {
 			'tools' => __('Tools', 'wc-dolibarr'),
 		);
 
-		$this->current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'api';
+		$this->current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'dashboard';
 	}
 
 	/**
@@ -297,6 +303,9 @@ class WC_Dolibarr_Settings {
 			<div class="tab-content">
 				<?php
 				switch ($this->current_tab) {
+					case 'dashboard':
+						$this->render_dashboard_tab();
+						break;
 					case 'api':
 						$this->render_api_tab();
 						break;
@@ -323,6 +332,234 @@ class WC_Dolibarr_Settings {
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render Dashboard tab (mirrors ERPNext layout)
+	 */
+	private function render_dashboard_tab() {
+		?>
+		<div class="wc-dolibarr-dashboard">
+			<div class="wc-dolibarr-stats-container">
+				<div class="wc-dolibarr-stat-card">
+					<div style="display: flex; align-items: center; justify-content: space-between;">
+						<div>
+							<h3 id="wc-dolibarr-total-orders-synced">-</h3>
+							<p><?php esc_html_e('Total Orders Synced', 'wc-dolibarr'); ?></p>
+						</div>
+						<div class="wc-dolibarr-stat-icon"><span class="dashicons dashicons-cart" style="font-size:24px;"></span></div>
+					</div>
+				</div>
+				<div class="wc-dolibarr-stat-card">
+					<div style="display: flex; align-items: center; justify-content: space-between;">
+						<div>
+							<h3 id="wc-dolibarr-total-customers-synced">-</h3>
+							<p><?php esc_html_e('Total Customers Synced', 'wc-dolibarr'); ?></p>
+						</div>
+						<div class="wc-dolibarr-stat-icon"><span class="dashicons dashicons-groups" style="font-size:24px;"></span></div>
+					</div>
+				</div>
+				<div class="wc-dolibarr-stat-card">
+					<div style="display: flex; align-items: center; justify-content: space-between;">
+						<div>
+							<h3 id="wc-dolibarr-inventory-last-update">-</h3>
+							<p><?php esc_html_e('Inventory Last Update', 'wc-dolibarr'); ?></p>
+						</div>
+						<div class="wc-dolibarr-stat-icon"><span class="dashicons dashicons-chart-line" style="font-size:24px;"></span></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="wc-dolibarr-table-container">
+				<h3><?php esc_html_e('Order Sync History', 'wc-dolibarr'); ?></h3>
+				<table id="wc-dolibarr-order-sync-history-table" class="display" style="width:100%;">
+					<thead>
+						<tr>
+							<th style="width: 15%;"><?php esc_html_e('WC Order ID', 'wc-dolibarr'); ?></th>
+							<th style="width: 20%;"><?php esc_html_e('Dolibarr Order ID', 'wc-dolibarr'); ?></th>
+							<th style="width: 25%;"><?php esc_html_e('Synced At', 'wc-dolibarr'); ?></th>
+							<th style="width: 15%;"><?php esc_html_e('Status', 'wc-dolibarr'); ?></th>
+							<th style="width: 25%;"><?php esc_html_e('Actions', 'wc-dolibarr'); ?></th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Dashboard: Get stats
+	 */
+	public function get_dashboard_stats() {
+		check_ajax_referer('wc_dolibarr_nonce', 'nonce');
+
+		if (!current_user_can('manage_woocommerce')) {
+			wp_die(esc_html__('Insufficient permissions.', 'wc-dolibarr'));
+		}
+
+		global $wpdb;
+		$table_history = $wpdb->prefix . 'wc_dolibarr_order_sync_history';
+		$table_logs = $wpdb->prefix . 'wc_dolibarr_sync_log';
+
+		// Ensure tables exist
+		$history_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_history));
+		$logs_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_logs));
+		if (!$history_exists || !$logs_exists) {
+			wp_send_json_error(array( 'message' => 'Required tables not found' ));
+			return;
+		}
+
+		$total_orders_synced = (int) $wpdb->get_var(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT COUNT(*) FROM `{$table_history}` WHERE sync_status = 'success'"
+		);
+		$total_customers_synced = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM `{$table_logs}` WHERE sync_type = %s AND status = %s",
+				'customer',
+				'success'
+			)
+		);
+	
+		$inventory_last_update = get_option( 'wc_dolibarr_inventory_last_update', '' );
+
+		if ( $inventory_last_update ) {
+			$inventory_last_update = wp_date( 'Y-m-d H:i:s', $inventory_last_update );
+		}		
+
+		wp_send_json_success(array(
+			'total_orders_synced' => $total_orders_synced,
+			'total_customers_synced' => $total_customers_synced,
+			'inventory_last_update' => $inventory_last_update,
+		));
+	}
+
+	/**
+	 * Dashboard: Order history for DataTables
+	 */
+	public function get_order_sync_history() {
+		check_ajax_referer('wc_dolibarr_nonce', 'nonce');
+
+		if (!current_user_can('manage_woocommerce')) {
+			wp_die(esc_html__('Insufficient permissions.', 'wc-dolibarr'));
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'wc_dolibarr_order_sync_history';
+
+		$draw = isset($_POST['draw']) ? intval($_POST['draw']) : 1;
+		$start = isset($_POST['start']) ? intval($_POST['start']) : 0;
+		$length = isset($_POST['length']) ? intval($_POST['length']) : 10;
+		$search = isset($_POST['search']['value']) ? sanitize_text_field(wp_unslash($_POST['search']['value'])) : '';
+
+		if (!empty($search)) {
+			$like = '%' . $wpdb->esc_like($search) . '%';
+			$total_records = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT COUNT(*) FROM `{$table}` WHERE (order_id LIKE %s OR dolibarr_order_id LIKE %s)",
+					$like,
+					$like
+				)
+			);
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT * FROM `{$table}` WHERE (order_id LIKE %s OR dolibarr_order_id LIKE %s) ORDER BY last_sync_at DESC LIMIT %d OFFSET %d",
+					$like,
+					$like,
+					$length,
+					$start
+				)
+			);
+		} else {
+			$total_records = (int) $wpdb->get_var(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM `{$table}`"
+			);
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT * FROM `{$table}` ORDER BY last_sync_at DESC LIMIT %d OFFSET %d",
+					$length,
+					$start
+				)
+			);
+		}
+
+		$data = array();
+		foreach ($rows as $row) {
+			$wc_order_link = admin_url('post.php?post=' . $row->order_id . '&action=edit');
+			$dolibarr_link = '';
+			if (!empty($row->dolibarr_order_id)) {
+				$api_url = wc_dolibarr_get_option('api_url', '');
+				if ($api_url) {
+					$api_url = rtrim($api_url, '/');
+					$param_key = ctype_digit((string) $row->dolibarr_order_id) ? 'id' : 'ref';
+					// Sales orders in Dolibarr live under /commande/card.php
+					$dolibarr_link = $api_url . '/commande/card.php?' . $param_key . '=' . rawurlencode($row->dolibarr_order_id);
+				}
+			}
+
+			$status_class = ($row->sync_status === 'success') ? 'success' : 'error';
+			$status_text = ($row->sync_status === 'success') ? __('Success', 'wc-dolibarr') : __('Failure', 'wc-dolibarr');
+			$status_html = '<span class="sync-status sync-status-' . esc_attr($status_class) . '"' . (!empty($row->error_message) ? ' title="' . esc_attr($row->error_message) . '"' : '') . '>' . esc_html($status_text) . '</span>';
+
+			$actions = array();
+			$actions[] = '<a href="' . esc_url($wc_order_link) . '" target="_blank" class="wc-erpnext-action-btn wc-logo-link" title="' . esc_attr__('View in WooCommerce', 'wc-dolibarr') . '"><span class="dashicons dashicons-welcome-view-site"></span></a>';
+			if ($dolibarr_link) {
+				$actions[] = '<a href="' . esc_url($dolibarr_link) . '" target="_blank" class="wc-erpnext-action-btn erpnext-logo-link" title="' . esc_attr__('View in Dolibarr', 'wc-dolibarr') . '"><span class="dashicons dashicons-external"></span></a>';
+			}
+			$actions[] = '<button type="button" class="wc-erpnext-action-btn wc-dolibarr-resync-order" data-order-id="' . esc_attr($row->order_id) . '" title="' . esc_attr__('Resync Order', 'wc-dolibarr') . '"><span class="dashicons dashicons-update"></span></button>';
+
+			$data[] = array(
+				'<a href="' . esc_url($wc_order_link) . '" target="_blank">#' . esc_html($row->order_id) . '</a>',
+				$row->dolibarr_order_id ? '<a href="' . esc_url($dolibarr_link) . '" target="_blank">' . esc_html($row->dolibarr_order_id) . '</a>' : '-',
+				esc_html($row->last_sync_at),
+				$status_html,
+				implode(' ', $actions),
+			);
+		}
+
+		wp_send_json(array(
+			'draw' => $draw,
+			'recordsTotal' => intval($total_records),
+			'recordsFiltered' => intval($total_records),
+			'data' => $data,
+		));
+	}
+
+	/**
+	 * Dashboard: Resync a specific order
+	 */
+	public function resync_order() {
+		check_ajax_referer('wc_dolibarr_nonce', 'nonce');
+
+		if (!current_user_can('manage_woocommerce')) {
+			wp_die(esc_html__('Insufficient permissions.', 'wc-dolibarr'));
+		}
+
+		$order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+		if (!$order_id) {
+			wp_send_json_error(__('Invalid order ID.', 'wc-dolibarr'));
+		}
+
+		$plugin = WC_Dolibarr_Integration::getInstance();
+		if (!$plugin || !isset($plugin->order_sync)) {
+			wp_send_json_error(__('Order sync class not available.', 'wc-dolibarr'));
+		}
+
+		$result = $plugin->order_sync->sync_order($order_id);
+		if (is_wp_error($result)) {
+			wp_send_json_error($result->get_error_message());
+		}
+		if (is_array($result) && isset($result['status']) && $result['status'] === 'success') {
+			wp_send_json_success(__('Order resynced successfully.', 'wc-dolibarr'));
+		}
+		wp_send_json_error(__('Order resync failed. Please check the logs.', 'wc-dolibarr'));
 	}
 
 	/**

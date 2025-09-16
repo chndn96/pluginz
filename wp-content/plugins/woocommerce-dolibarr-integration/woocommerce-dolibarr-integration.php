@@ -188,10 +188,7 @@ class WC_Dolibarr_Integration {
 				$this->settings = new WC_Dolibarr_Settings();
 			}
 
-			// Initialize product settings
-			if (class_exists('WC_Dolibarr_Product_Settings')) {
-				$this->product_settings = new WC_Dolibarr_Product_Settings();
-			}
+			// Initialize product settings (removed; class not present)
 
 			// Initialize batch processor
 			if (class_exists('WC_Dolibarr_Batch_Processor')) {
@@ -346,11 +343,17 @@ class WC_Dolibarr_Integration {
 	 */
 	public function adminScripts( $hook ) {
 		if (strpos($hook, 'wc-dolibarr') !== false) {
+			$active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'dashboard';
 			// Enqueue Select2
 			wp_enqueue_style('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css');
 			wp_enqueue_script('select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', array( 'jquery' ), '4.1.0', true);
 
 			wp_enqueue_style('wc-dolibarr-admin', WC_DOLIBARR_PLUGIN_URL . 'assets/css/admin.css', array(), WC_DOLIBARR_VERSION);
+			// Dashboard/DataTables assets
+			if ($active_tab === 'dashboard' || $active_tab === 'logs') {
+				wp_enqueue_style('datatables', 'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css');
+				wp_enqueue_script('datatables', 'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js', array( 'jquery' ), '1.13.7', true);
+			}
 			wp_enqueue_script('wc-dolibarr-admin', WC_DOLIBARR_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery', 'select2' ), WC_DOLIBARR_VERSION, true);
 			wp_localize_script(
 				'wc-dolibarr-admin',

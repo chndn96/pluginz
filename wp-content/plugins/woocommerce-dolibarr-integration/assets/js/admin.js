@@ -349,4 +349,72 @@ jQuery(document).ready(function($) {
             window.location.hash = href.split('#')[1];
         }
     });
+
+    // Dashboard functionality for Dolibarr settings
+    if ($('#wc-dolibarr-order-sync-history-table').length) {
+        // Load stats
+        function loadDolibarrDashboardStats() {
+            $.ajax({
+                url: wc_dolibarr_ajax.ajax_url,
+                type: 'POST',
+                data: { action: 'wc_dolibarr_get_dashboard_stats', nonce: wc_dolibarr_ajax.nonce },
+                success: function(response) {
+                    if (response.success) {
+                        $('#wc-dolibarr-total-orders-synced').text(response.data.total_orders_synced);
+                        $('#wc-dolibarr-total-customers-synced').text(response.data.total_customers_synced);
+                        $('#wc-dolibarr-inventory-last-update').text(response.data.inventory_last_update || 'Never');
+                    }
+                }
+            });
+        }
+
+        var dolibarrOrderTable = $('#wc-dolibarr-order-sync-history-table').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: wc_dolibarr_ajax.ajax_url,
+                type: 'POST',
+                data: function(d) {
+                    d.action = 'wc_dolibarr_get_order_sync_history';
+                    d.nonce = wc_dolibarr_ajax.nonce;
+                }
+            },
+            columns: [
+                { data: 0 },
+                { data: 1 },
+                { data: 2 },
+                { data: 3 },
+                { data: 4 }
+            ],
+            order: [[2, 'desc']],
+            pageLength: 25
+        });
+
+        // Resync order handler
+        $(document).on('click', '.wc-dolibarr-resync-order', function() {
+            var orderId = $(this).data('order-id');
+            var $btn = $(this);
+            if (confirm('Are you sure you want to resync this order?')) {
+                $btn.prop('disabled', true).html('<span class="dashicons dashicons-update" style="animation: wc-dolibarr-spin 1s linear infinite;"></span>');
+                $.ajax({
+                    url: wc_dolibarr_ajax.ajax_url,
+                    type: 'POST',
+                    data: { action: 'wc_dolibarr_resync_order', order_id: orderId, nonce: wc_dolibarr_ajax.nonce },
+                    success: function(response) {
+                        if (response.success) {
+                            alert('Order resynced successfully!');
+                            dolibarrOrderTable.ajax.reload();
+                            loadDolibarrDashboardStats();
+                        } else {
+                            alert('Order resync failed: ' + response.data);
+                        }
+                    },
+                    complete: function() { $btn.prop('disabled', false).html('<span class="dashicons dashicons-update"></span>'); }
+                });
+            }
+        });
+
+        // Initial stats load
+        loadDolibarrDashboardStats();
+    }
 });

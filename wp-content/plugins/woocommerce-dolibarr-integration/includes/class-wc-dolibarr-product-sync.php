@@ -47,16 +47,15 @@ class WC_Dolibarr_Product_Sync {
 		$total = count($products);
 		$synced = 0;
 		$errors = 0;
-
 		foreach ($products as $product) {
 			$data = $this->map_wc_to_dolibarr_product($product);
 			$dolibarr_id = wc_dolibarr_get_product_dolibarr_id($product);
 			if ($dolibarr_id) {
 				$response = $this->api->update_product($dolibarr_id, $data);
-				
 			} else {
 				$response = $this->api->create_product($data);
 				if (!is_wp_error($response) && isset($response) && !empty($response)) {
+					 $this->logger->log_sync('Product', $product->get_id(), $response, 'success', 'Product synced successfully to dolibarr ');
 					update_post_meta($product->get_id(), '_dolibarr_product_id', (int) $response);
 				}
 			}
@@ -146,7 +145,7 @@ class WC_Dolibarr_Product_Sync {
 			}
 			if ($product_id) {
 				update_post_meta($product_id, '_dolibarr_product_id', $dol_product['id']);
-				$this->logger->log("Imported WC product {$product_id} from Dolibarr ID {$dol_product['id']}.", 'info');
+				$this->logger->log_sync('Product', $dol_product['id'], $product_id, 'success', 'Product synced successfully from dolibarr ');
 					return true;
 				} else {
 					return new WP_Error('create_failed', __('Could not save WooCommerce product.', 'wc-dolibarr'));
@@ -169,7 +168,7 @@ class WC_Dolibarr_Product_Sync {
 			$wc_product->set_description($dol_product['description'] ?? '');
 				$wc_product->save();
 
-				$this->logger->log("Updated WC product {$wc_product->get_id()} from Dolibarr ID {$dol_product['id']}.", 'info');
+				$this->logger->log_sync('Product', $dol_product['id'], $wc_product->get_id(), 'success', 'Product synced successfully from dolibarr ');
 				return true;
 
         } catch (Exception $e) {
@@ -249,6 +248,7 @@ class WC_Dolibarr_Product_Sync {
 				$this->logger->log("Stock export error for product {$product->get_id()}: " . $response->get_error_message(), 'error');
 			} else {
 				$synced++;
+				$this->logger->log(sprintf('Synced inventory successfully for product ID: %d', $response), 'info');
 			}
 		}
 

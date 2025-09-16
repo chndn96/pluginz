@@ -483,6 +483,7 @@ class WC_Dolibarr_API {
 			];
 			$response = $this->request('/stockmovements', 'POST', $stock_data);
 			$result['stock'] = $response;
+			update_option( 'wc_dolibarr_inventory_last_update', current_time( 'mysql' ) );
 		} else {
 			$result['stock'] = "No stock change (Dolibarr=$dolibarr_stock, Woo=$wc_quantity)";
 		}
