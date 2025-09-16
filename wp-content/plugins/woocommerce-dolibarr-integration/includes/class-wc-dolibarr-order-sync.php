@@ -95,16 +95,22 @@ class WC_Dolibarr_Order_Sync {
 			$this->logger->log_sync('order', $order->get_id(), null, 'skipped', 'Order sync disabled or not eligible');
 			return array( 'status' => 'skipped', 'message' => 'Order sync disabled or not eligible' );
 		}
-
 		// Ensure customer is synced first
 		$customer_result = $this->ensure_customer_synced($order);
 		if (is_wp_error($customer_result)) {
 			return $customer_result;
 		}
-
+		foreach ($order->get_items() as $item_id => $item) {
+			$product = $item->get_product();
+			if ($product) {
+				$product_result = $this->ensure_product_synced($product);
+				if (is_wp_error($product_result)) {
+					return $product_result;
+				}
+			}
+		}
 		$dolibarr_order_id = wc_dolibarr_get_order_dolibarr_id($order);
 		$order_data = wc_dolibarr_format_order_data($order);
-
 		// Set customer ID from sync result
 		if (isset($customer_result['dolibarr_id'])) {
 			$order_data['socid'] = $customer_result['dolibarr_id'];
@@ -127,8 +133,8 @@ class WC_Dolibarr_Order_Sync {
 			}
 
 			// Extract order ID from response
-			if (!$dolibarr_order_id && isset($result['id'])) {
-				$dolibarr_order_id = $result['id'];
+			if (!$dolibarr_order_id && isset($result)) {
+				$dolibarr_order_id = (int) $result;
 			}
 
 			// Save Dolibarr ID to order meta
@@ -161,12 +167,11 @@ class WC_Dolibarr_Order_Sync {
 	 */
 	private function ensure_customer_synced( $order ) {
 		$customer_id = $order->get_customer_id();
-		
 		if ($customer_id) {
 			$customer = new WC_Customer($customer_id);
 			$dolibarr_customer_id = wc_dolibarr_get_customer_dolibarr_id($customer);
-			
 			if (!$dolibarr_customer_id) {
+
 				// Sync customer first
 				$customer_sync = new WC_Dolibarr_Customer_Sync();
 				$customer_result = $customer_sync->sync_customer($customer);
@@ -177,13 +182,53 @@ class WC_Dolibarr_Order_Sync {
 				
 				return $customer_result;
 			}
-			
 			return array( 'dolibarr_id' => $dolibarr_customer_id );
+		}
+		$email = $order->get_billing_email();
+		if ( $email ) {
+			$dolibarr_customer_id = wc_dolibarr_find_customer_by_email( $email );
+			if ( $dolibarr_customer_id ) {
+				return array( 'dolibarr_id' => $dolibarr_customer_id );
+			}
 		}
 
 		// Guest customer - create minimal customer record
 		return $this->create_guest_customer($order);
 	}
+
+	/**
+ * Ensure product is synced in Dolibarr before order sync
+ *
+ * @param WC_Product $product
+ * @return array|WP_Error Array with dolibarr_id or WP_Error
+ */
+	private function ensure_product_synced( $product ) {
+		if ( ! $product instanceof WC_Product ) {
+			return new WP_Error( 'invalid_product', __( 'Invalid WooCommerce product.', 'wc-dolibarr' ) );
+		}
+
+		// Check if already synced
+		$dolibarr_product_id = wc_dolibarr_get_product_dolibarr_id( $product );
+		if ( $dolibarr_product_id ) {
+			return array( 'dolibarr_id' => $dolibarr_product_id );
+		}
+
+		// Not yet synced → export to Dolibarr
+		$product_sync = new WC_Dolibarr_Product_Sync();
+		$data = $product_sync->map_wc_to_dolibarr_product( $product );
+		$response = $this->api->create_product( $data );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		if ($response) {
+			update_post_meta( $product->get_id(), '_dolibarr_product_id', (int) $response );
+			return array( 'dolibarr_id' => (int) $response );
+		}
+
+		return new WP_Error( 'sync_failed', __( 'Failed to sync product to Dolibarr.', 'wc-dolibarr' ) );
+	}
+
 
 	/**
 	 * Create guest customer for order
@@ -193,6 +238,8 @@ class WC_Dolibarr_Order_Sync {
 	 * @return array|WP_Error
 	 */
 	private function create_guest_customer( $order ) {
+		$country_code = $order->get_billing_country();
+		$country_id = wc_dolibarr_get_country_id($country_code);
 		$customer_data = array(
 			'name' => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
 			'firstname' => $order->get_billing_first_name(),
@@ -202,9 +249,10 @@ class WC_Dolibarr_Order_Sync {
 			'address' => $order->get_billing_address_1(),
 			'zip' => $order->get_billing_postcode(),
 			'town' => $order->get_billing_city(),
-			'country_code' => $order->get_billing_country(),
+			'country_id' => $country_id,
 			'client' => 1,
 			'status' => 1,
+			'code_client' => 'WCG' . $order->get_id() . '-' . time(),
 		);
 
 		if ($order->get_billing_company()) {
@@ -214,12 +262,11 @@ class WC_Dolibarr_Order_Sync {
 		}
 
 		$result = $this->api->create_customer($customer_data);
-		
 		if (is_wp_error($result)) {
 			return $result;
 		}
 
-		return array( 'dolibarr_id' => $result['id'] ?? null );
+		return array( 'dolibarr_id' => (int) ($result ?? 0) );
 	}
 
 	/**
@@ -253,7 +300,6 @@ class WC_Dolibarr_Order_Sync {
 		);
 
 		$this->logger->log(sprintf('Starting bulk order sync for %d orders.', count($orders)), 'info');
-
 		foreach ($orders as $order) {
 			$result = $this->sync_order($order);
 

@@ -19,6 +19,8 @@ if (!defined('ABSPATH')) {
  * @return array
  */
 function wc_dolibarr_format_customer_data( $customer ) {
+	$country_code = $customer->get_billing_country();
+	$country_id = wc_dolibarr_get_country_id($country_code);
 	$data = array(
 		'name' => $customer->get_display_name(),
 		'firstname' => $customer->get_first_name(),
@@ -28,10 +30,11 @@ function wc_dolibarr_format_customer_data( $customer ) {
 		'address' => $customer->get_billing_address_1(),
 		'zip' => $customer->get_billing_postcode(),
 		'town' => $customer->get_billing_city(),
-		'country_code' => $customer->get_billing_country(),
+		'country_id' => $country_id,
 		'state_code' => $customer->get_billing_state(),
 		'client' => 1, // Mark as customer
 		'status' => 1, // Active
+		'code_client' => 'WC' . $customer->get_id() . '-' . time(),
 	);
 
 	// Add company information if available
@@ -69,6 +72,7 @@ function wc_dolibarr_format_order_data( $order ) {
 			'subprice' => wc_dolibarr_format_price($item->get_subtotal() / $item->get_quantity()),
 			'qty' => $item->get_quantity(),
 			'tva_tx' => 0, // Tax rate - will be calculated if tax sync is enabled
+			'product_type' => 0,
 		);
 
 		// Add product reference if available
@@ -147,6 +151,26 @@ function wc_dolibarr_get_customer_dolibarr_id( $customer ) {
 
 	return $customer->get_meta('_dolibarr_customer_id', true) ?: null;
 }
+
+/**
+ * Find a Dolibarr customer ID by email.
+ *
+ * @param string $email Customer email address.
+ * @return int|null Dolibarr customer ID if found, null otherwise.
+ */
+function wc_dolibarr_find_customer_by_email( $email ) {
+	if ( empty( $email ) ) {
+		return null;
+	}
+
+	$api = new WC_Dolibarr_API();
+	$customer = $api->find_customer_by_email( $email );
+
+	return ( ! is_wp_error( $customer ) && ! empty( $customer['id'] ) )
+		? (int) $customer['id']
+		: null;
+}
+
 
 /**
  * Set Dolibarr customer ID for WooCommerce customer
@@ -263,7 +287,6 @@ function wc_dolibarr_should_sync_order( $order ) {
 	if (!wc_dolibarr_get_option('sync_orders', false)) {
 		return false;
 	}
-
 	// Don't sync failed or cancelled orders
 	$excluded_statuses = apply_filters('wc_dolibarr_excluded_order_statuses', array( 'failed', 'cancelled', 'refunded' ));
 	if (in_array($order->get_status(), $excluded_statuses)) {
@@ -391,6 +414,7 @@ function wc_dolibarr_get_country_id( $country_code ) {
 		'GB' => 4,
 		'ES' => 5,
 		'IT' => 6,
+		'IN' => 7,
 	);
 
 	return isset($country_mapping[$country_code]) ? $country_mapping[$country_code] : 0;

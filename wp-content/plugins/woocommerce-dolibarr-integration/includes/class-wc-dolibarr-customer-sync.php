@@ -108,7 +108,6 @@ class WC_Dolibarr_Customer_Sync {
 		// Check if customer already exists in Dolibarr
 		$dolibarr_id = wc_dolibarr_get_customer_dolibarr_id($customer);
 		$customer_data = wc_dolibarr_format_customer_data($customer);
-
 		try {
 			if ($dolibarr_id) {
 				// Update existing customer
@@ -117,7 +116,6 @@ class WC_Dolibarr_Customer_Sync {
 			} else {
 				// Check if customer exists by email
 				$existing_customer = $this->api->find_customer_by_email($customer->get_email());
-				
 				if ($existing_customer && !is_wp_error($existing_customer)) {
 					// Customer exists, update it
 					$dolibarr_id = $existing_customer['id'];
@@ -136,8 +134,8 @@ class WC_Dolibarr_Customer_Sync {
 			}
 
 			// Extract customer ID from response
-			if (!$dolibarr_id && isset($result['id'])) {
-				$dolibarr_id = $result['id'];
+			if (!$dolibarr_id && isset($result)) {
+				$dolibarr_id = (int) $result;
 			}
 
 			// Save Dolibarr ID to customer meta
@@ -197,13 +195,11 @@ class WC_Dolibarr_Customer_Sync {
 			'skipped' => 0,
 			'details' => array(),
 		);
-
 		$this->logger->log(sprintf('Starting bulk customer sync for %d customers.', count($users)), 'info');
 
 		foreach ($users as $user) {
 			$customer = new WC_Customer($user->ID);
 			$result = $this->sync_customer($customer);
-
 			if (is_wp_error($result)) {
 				$results['errors']++;
 				$results['details'][] = array(

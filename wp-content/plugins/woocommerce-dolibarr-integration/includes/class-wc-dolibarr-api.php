@@ -287,7 +287,7 @@ class WC_Dolibarr_API {
 	 * @return array|WP_Error
 	 */
 	public function get_customers( $params = array() ) {
-		$endpoint = '/customers';
+		$endpoint = '/thirdparties';
 		
 		if (!empty($params)) {
 			$endpoint .= '?' . http_build_query($params);
@@ -304,7 +304,7 @@ class WC_Dolibarr_API {
 	 * @return array|WP_Error
 	 */
 	public function get_customer( $customer_id ) {
-		return $this->request('/customers/' . $customer_id);
+		return $this->request('/thirdparties/' . $customer_id);
 	}
 
 	/**
@@ -315,7 +315,7 @@ class WC_Dolibarr_API {
 	 * @return array|WP_Error
 	 */
 	public function create_customer( $customer_data ) {
-		return $this->request('/customers', 'POST', $customer_data);
+		return $this->request('/thirdparties', 'POST', $customer_data);
 	}
 
 	/**
@@ -327,7 +327,7 @@ class WC_Dolibarr_API {
 	 * @return array|WP_Error
 	 */
 	public function update_customer( $customer_id, $customer_data ) {
-		return $this->request('/customers/' . $customer_id, 'PUT', $customer_data);
+		return $this->request('/thirdparties/' . $customer_id, 'PUT', $customer_data);
 	}
 
 	/**
@@ -459,15 +459,51 @@ class WC_Dolibarr_API {
 	 * @since 1.0.0
 	 * @return array|WP_Error
 	 */
-	public function update_product_inventory( $product_id, $warehouse_id, $quantity ) {
-		$data = array(
-			'warehouse_id' => $warehouse_id,
-			'qty' => $quantity,
-			'type' => 'stock',
-		);
-
-		return $this->request('/products/' . $product_id . '/stock', 'PUT', $data);
+	public function update_product_inventory( $product_id, $warehouse_id, $wc_quantity, $wc_price ) {
+		$result = [];
+	
+		// 1. Get current product from Dolibarr
+		$product = $this->request('/products/' . $product_id, 'GET');
+		if ( is_wp_error($product) ) {
+			return $product; 
+		}
+		$dolibarr_stock = isset($product['stock_reel']) ? (int) $product['stock_reel'] : 0;
+		$dolibarr_price = isset($product['price']) ? (float) $product['price'] : 0;
+	
+		// 2. Stock sync
+		$diff = $wc_quantity - $dolibarr_stock;
+		if ($diff != 0) {
+			$movement = $diff > 0 ? 'input' : 'output';
+			$stock_data = [
+				'product_id'   => $product_id,
+				'warehouse_id' => $warehouse_id,
+				'qty'          => $diff,
+				'movement'     => $movement,
+				'label'        => 'WooCommerce Sync',
+			];
+			$response = $this->request('/stockmovements', 'POST', $stock_data);
+			$result['stock'] = $response;
+		} else {
+			$result['stock'] = "No stock change (Dolibarr=$dolibarr_stock, Woo=$wc_quantity)";
+		}
+	
+		// 3. Price sync (only if $wc_price passed)
+		if ( $wc_price !== null && $wc_price != $dolibarr_price ) {
+			$data = [
+				'price'          => (float) $wc_price,
+				'price_ttc'      => (float) $wc_price, // or adjust for tax
+				'price_base_type'=> 'HT',
+			];
+			$response = $this->update_product( $product_id, $data );
+			$result['price'] = $response;
+		} else {
+			$result['price'] = "No price change (Dolibarr=$dolibarr_price, Woo=$wc_price)";
+		}
+		return $result;
 	}
+	
+	
+	
 
 	/**
 	 * Find customer by email
