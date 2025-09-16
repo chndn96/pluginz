@@ -293,5 +293,5 @@ class WC_Dolibarr_Product_Sync {
 		return compact('total', 'imported', 'errors');
 	}
 
-	
 }
+

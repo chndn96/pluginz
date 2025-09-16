@@ -82,6 +82,7 @@ class WC_Dolibarr_Order_Sync {
 	 * @return array|WP_Error
 	 */
 	public function sync_order( $order ) {
+		
 		if (is_numeric($order)) {
 			$order = wc_get_order($order);
 		}
@@ -254,7 +255,6 @@ class WC_Dolibarr_Order_Sync {
 			'status' => 1,
 			'code_client' => 'WCG' . $order->get_id() . '-' . time(),
 		);
-
 		if ($order->get_billing_company()) {
 			$customer_data['name'] = $order->get_billing_company();
 			$customer_data['name_alias'] = $customer_data['firstname'] . ' ' . $customer_data['lastname'];
@@ -290,6 +290,7 @@ class WC_Dolibarr_Order_Sync {
 			'order' => 'DESC',
 		);
 
+
 		$orders = wc_get_orders($args);
 		$results = array(
 			'total' => count($orders),
@@ -302,7 +303,6 @@ class WC_Dolibarr_Order_Sync {
 		$this->logger->log(sprintf('Starting bulk order sync for %d orders.', count($orders)), 'info');
 		foreach ($orders as $order) {
 			$result = $this->sync_order($order);
-
 			if (is_wp_error($result)) {
 				$results['errors']++;
 				$results['details'][] = array(
