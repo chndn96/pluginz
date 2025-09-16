@@ -105,17 +105,43 @@ jQuery(document).ready(function($) {
     });
 
     // Sync Products
-    $('#sync-products').on('click', function(e) {
+    // $('#sync-products').on('click', function(e) {
+    //     e.preventDefault();
+    //     $(this).data('original-text', 'Sync Products');
+    //     performBulkSync('products', '#sync-products', '#sync-result');
+    // });
+    $('#export-products').on('click', function(e) {
         e.preventDefault();
-        $(this).data('original-text', 'Sync Products');
-        performBulkSync('products', '#sync-products', '#sync-result');
+        $(this).data('original-text', 'Export Products');
+        performBulkSync('products', '#export-products', '#sync-result');
+    });
+
+    // Import Products ← Dolibarr
+    $('#import-products').on('click', function(e) {
+        e.preventDefault();
+        $(this).data('original-text', 'Import Products');
+        performBulkSync('import_products', '#import-products', '#sync-result');
     });
 
     // Sync Inventory
-    $('#sync-inventory').on('click', function(e) {
+    // $('#sync-inventory').on('click', function(e) {
+    //     e.preventDefault();
+    //     $(this).data('original-text', 'Sync Inventory');
+    //     performBulkSync('inventory', '#sync-inventory', '#sync-result');
+    // });
+
+    // Export inventory (calls original ajax_sync_inventory)
+    $('#export-inventory').on('click', function(e) {
         e.preventDefault();
-        $(this).data('original-text', 'Sync Inventory');
-        performBulkSync('inventory', '#sync-inventory', '#sync-result');
+        $(this).data('original-text', 'Export Inventory to Dolibarr');
+        performBulkSync('inventory', '#export-inventory', '#sync-result');
+    });
+
+    // Import inventory
+    $('#import-inventory').on('click', function(e) {
+        e.preventDefault();
+        $(this).data('original-text', 'Import Inventory from Dolibarr');
+        performBulkSync('import_inventory', '#import-inventory', '#sync-result');
     });
 
     // Clear Logs

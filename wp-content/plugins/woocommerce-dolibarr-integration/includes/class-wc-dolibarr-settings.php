@@ -47,8 +47,12 @@ class WC_Dolibarr_Settings {
 		add_action('wp_ajax_wc_dolibarr_test_connection', array( $this, 'ajax_test_connection' ));
 		add_action('wp_ajax_wc_dolibarr_sync_customers', array( $this, 'ajax_sync_customers' ));
 		add_action('wp_ajax_wc_dolibarr_sync_orders', array( $this, 'ajax_sync_orders' ));
-		add_action('wp_ajax_wc_dolibarr_sync_products', array( $this, 'ajax_sync_products' ));
-		add_action('wp_ajax_wc_dolibarr_sync_inventory', array( $this, 'ajax_sync_inventory' ));
+		// add_action('wp_ajax_wc_dolibarr_sync_products', array( $this, 'ajax_sync_products' ));
+		add_action('wp_ajax_wc_dolibarr_sync_products', array($this, 'ajax_sync_products')); // Export
+		add_action('wp_ajax_wc_dolibarr_sync_import_products', array($this, 'ajax_import_products')); // Import
+		add_action('wp_ajax_wc_dolibarr_sync_inventory', array( $this, 'ajax_sync_inventory' )); //export
+		add_action('wp_ajax_wc_dolibarr_sync_import_inventory', array( $this, 'ajax_import_inventory' )); //import
+
 	}
 
 	/**
@@ -488,27 +492,40 @@ class WC_Dolibarr_Settings {
 							</td>
 						</tr>
 						<tr>
-							<th scope="row"><?php esc_html_e('Sync All Products', 'wc-dolibarr'); ?></th>
+							<th scope="row"><?php esc_html_e('Product Sync', 'wc-dolibarr'); ?></th>
 							<td>
-								<button type="button" id="sync-products" class="button button-secondary">
-									<?php esc_html_e('Sync Products', 'wc-dolibarr'); ?>
+								<button type="button" id="export-products" class="button button-secondary">
+									<?php esc_html_e('Export Products to Dolibarr', 'wc-dolibarr'); ?>
+								</button>
+								<button type="button" id="import-products" class="button button-primary">
+									<?php esc_html_e('Import Products from Dolibarr', 'wc-dolibarr'); ?>
 								</button>
 								<p class="description">
-									<?php esc_html_e('Sync products from Dolibarr to WooCommerce.', 'wc-dolibarr'); ?>
+									<?php esc_html_e('Export WooCommerce products to Dolibarr or Import Dolibarr products into WooCommerce.', 'wc-dolibarr'); ?>
 								</p>
+								<!-- <div id="sync-result"></div> -->
 							</td>
 						</tr>
+
 						<tr>
-							<th scope="row"><?php esc_html_e('Sync Inventory', 'wc-dolibarr'); ?></th>
+							<th scope="row"><?php esc_html_e( 'Inventory Sync', 'wc-dolibarr' ); ?></th>
 							<td>
-								<button type="button" id="sync-inventory" class="button button-secondary">
-									<?php esc_html_e('Sync Inventory', 'wc-dolibarr'); ?>
+								<!-- Export Inventory to Dolibarr -->
+								<button type="button" id="export-inventory" class="button button-secondary">
+									<?php esc_html_e( 'Export Inventory to Dolibarr', 'wc-dolibarr' ); ?>
 								</button>
+
+								<!-- Import Inventory from Dolibarr -->
+								<button type="button" id="import-inventory" class="button button-primary">
+									<?php esc_html_e( 'Import Inventory from Dolibarr', 'wc-dolibarr' ); ?>
+								</button>
+
 								<p class="description">
-									<?php esc_html_e('Update inventory levels from Dolibarr.', 'wc-dolibarr'); ?>
+									<?php esc_html_e( 'Choose whether to export WooCommerce stock levels to Dolibarr, or import Dolibarr inventory into WooCommerce.', 'wc-dolibarr' ); ?>
 								</p>
 							</td>
 						</tr>
+
 					</tbody>
 				</table>
 				
@@ -745,7 +762,6 @@ class WC_Dolibarr_Settings {
 		if (class_exists('WC_Dolibarr_Customer_Sync')) {
 			$customer_sync = new WC_Dolibarr_Customer_Sync();
 			$result = $customer_sync->sync_all_customers();
-			
 			if (is_wp_error($result)) {
 				wp_send_json_error($result->get_error_message());
 			} else {
@@ -786,41 +802,85 @@ class WC_Dolibarr_Settings {
 			wp_die(__('Insufficient permissions.', 'wc-dolibarr'));
 		}
 
-		// Trigger product sync
 		if (class_exists('WC_Dolibarr_Product_Sync')) {
 			$product_sync = new WC_Dolibarr_Product_Sync();
-			$result = $product_sync->sync_all_products();
-			
+			$result = $product_sync->export_all_products();
 			if (is_wp_error($result)) {
 				wp_send_json_error($result->get_error_message());
 			} else {
-				wp_send_json_success($result);
-				// wp_send_json_success(__('Product sync completed successfully.', 'wc-dolibarr'));
+				wp_send_json_success(__('Product export to Dolibarr completed successfully.', 'wc-dolibarr'));
 			}
 		} else {
 			wp_send_json_error(__('Product sync class not available.', 'wc-dolibarr'));
 		}
 	}
-
-	public function ajax_sync_inventory() {
+	public function ajax_import_products() {
 		check_ajax_referer('wc_dolibarr_nonce', 'nonce');
 
 		if (!current_user_can('manage_woocommerce')) {
 			wp_die(__('Insufficient permissions.', 'wc-dolibarr'));
 		}
 
-		// Trigger inventory sync
 		if (class_exists('WC_Dolibarr_Product_Sync')) {
 			$product_sync = new WC_Dolibarr_Product_Sync();
-			$result = $product_sync->sync_inventory();
-			
+			$result = $product_sync->import_all_products();
 			if (is_wp_error($result)) {
 				wp_send_json_error($result->get_error_message());
 			} else {
-				wp_send_json_success(__('Inventory sync completed successfully.', 'wc-dolibarr'));
+				wp_send_json_success(__('Products imported from Dolibarr successfully.', 'wc-dolibarr'));
 			}
 		} else {
-			wp_send_json_error(__('Product sync class not available.', 'wc-dolibarr'));
+			wp_send_json_error(__('Product import class not available.', 'wc-dolibarr'));
 		}
 	}
+
+
+
+	/**
+ * Export inventory to Dolibarr
+ */
+public function ajax_sync_inventory() {
+	check_ajax_referer('wc_dolibarr_nonce', 'nonce');
+
+	if ( ! current_user_can('manage_woocommerce') ) {
+		wp_die(__('Insufficient permissions.', 'wc-dolibarr'));
+	}
+
+	if ( class_exists('WC_Dolibarr_Product_Sync') ) {
+		$product_sync = new WC_Dolibarr_Product_Sync();
+		$result = $product_sync->export_inventory(); // Export logic
+
+		if ( is_wp_error($result) ) {
+			wp_send_json_error($result->get_error_message());
+		} else {
+			wp_send_json_success(__('Inventory exported to Dolibarr successfully.', 'wc-dolibarr'));
+		}
+	} else {
+		wp_send_json_error(__('Product sync class not available.', 'wc-dolibarr'));
+	}
+}
+
+/**
+ * Import inventory from Dolibarr
+ */
+public function ajax_import_inventory() {
+	check_ajax_referer('wc_dolibarr_nonce', 'nonce');
+
+	if ( ! current_user_can('manage_woocommerce') ) {
+		wp_die(__('Insufficient permissions.', 'wc-dolibarr'));
+	}
+
+	if ( class_exists('WC_Dolibarr_Product_Sync') ) {
+		$product_sync = new WC_Dolibarr_Product_Sync();
+		$result = $product_sync->import_inventory(); // Import logic
+		if ( is_wp_error($result) ) {
+			wp_send_json_error($result->get_error_message());
+		} else {
+			wp_send_json_success(__('Inventory imported from Dolibarr successfully.', 'wc-dolibarr'));
+		}
+	} else {
+		wp_send_json_error(__('Product sync class not available.', 'wc-dolibarr'));
+	}
+}
+
 }
