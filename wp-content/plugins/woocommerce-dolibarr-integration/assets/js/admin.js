@@ -417,4 +417,85 @@ jQuery(document).ready(function($) {
         // Initial stats load
         loadDolibarrDashboardStats();
     }
+
+    // Batch Sync Operations for Order Sync tab
+    $('#batch-sync-orders').on('click', function(e) {
+        e.preventDefault();
+        
+        if (!confirm('Are you sure you want to start batch syncing previous orders? This may take a while.')) {
+            return;
+        }
+        
+        var $button = $(this);
+        var $progress = $('#batch-sync-progress');
+        
+        $button.prop('disabled', true).html('<span class="dashicons dashicons-cart"></span> Syncing...');
+        $progress.show().html('<div class="wc-dolibarr-progress-bar" style="width: 0%; background: #0073aa; height: 20px; border-radius: 3px; margin: 10px 0;"><div style="text-align: center; line-height: 20px; color: white; font-size: 12px;">Starting sync...</div></div>');
+        
+        $.ajax({
+            url: wc_dolibarr_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'wc_dolibarr_batch_sync_previous_orders',
+                nonce: wc_dolibarr_ajax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $progress.html('<div class="notice notice-success"><p><strong>Success!</strong> ' + response.data.message + '</p></div>');
+                    // Reload dashboard stats if available
+                    if (typeof loadDolibarrDashboardStats === 'function') {
+                        loadDolibarrDashboardStats();
+                    }
+                } else {
+                    $progress.html('<div class="notice notice-error"><p><strong>Error:</strong> ' + response.data + '</p></div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $progress.html('<div class="notice notice-error"><p><strong>Error:</strong> Batch sync failed: ' + error + '</p></div>');
+            },
+            complete: function() {
+                $button.prop('disabled', false).html('<span class="dashicons dashicons-cart"></span> Sync Previous Orders');
+            }
+        });
+    });
+
+    $('#batch-sync-customers').on('click', function(e) {
+        e.preventDefault();
+        
+        if (!confirm('Are you sure you want to start batch syncing previous customers? This may take a while.')) {
+            return;
+        }
+        
+        var $button = $(this);
+        var $progress = $('#batch-sync-progress');
+        
+        $button.prop('disabled', true).html('<span class="dashicons dashicons-groups"></span> Syncing...');
+        $progress.show().html('<div class="wc-dolibarr-progress-bar" style="width: 0%; background: #0073aa; height: 20px; border-radius: 3px; margin: 10px 0;"><div style="text-align: center; line-height: 20px; color: white; font-size: 12px;">Starting sync...</div></div>');
+        
+        $.ajax({
+            url: wc_dolibarr_ajax.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'wc_dolibarr_batch_sync_previous_customers',
+                nonce: wc_dolibarr_ajax.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $progress.html('<div class="notice notice-success"><p><strong>Success!</strong> ' + response.data.message + '</p></div>');
+                    // Reload dashboard stats if available
+                    if (typeof loadDolibarrDashboardStats === 'function') {
+                        loadDolibarrDashboardStats();
+                    }
+                } else {
+                    $progress.html('<div class="notice notice-error"><p><strong>Error:</strong> ' + response.data + '</p></div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $progress.html('<div class="notice notice-error"><p><strong>Error:</strong> Batch sync failed: ' + error + '</p></div>');
+            },
+            complete: function() {
+                $button.prop('disabled', false).html('<span class="dashicons dashicons-groups"></span> Sync Previous Customers');
+            }
+        });
+    });
 });

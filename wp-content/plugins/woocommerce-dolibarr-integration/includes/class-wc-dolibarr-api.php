@@ -280,6 +280,53 @@ class WC_Dolibarr_API {
 	}
 
 	/**
+	 * Get Dolibarr accounting accounts (chart of accounts)
+	 *
+	 * @since 1.0.0
+	 * @return array|WP_Error
+	 */
+	public function get_accounting_accounts() {
+		$endpoints_to_try = array(
+			'/accountingaccounts',
+			'/accountancy/accounts',
+			'/accounting/account',
+			'/accounting/accounts',
+			'/glaccounts',
+		);
+
+		foreach ($endpoints_to_try as $endpoint) {
+			$response = $this->request($endpoint);
+			if (is_wp_error($response)) {
+				continue;
+			}
+
+			if (!is_array($response) || empty($response)) {
+				continue;
+			}
+
+			$accounts = array();
+			foreach ($response as $account) {
+				// Normalize fields from possible shapes
+				$acc_id = $account['id'] ?? ($account['rowid'] ?? ($account['ref'] ?? null));
+				$acc_code = $account['account_number'] ?? ($account['code'] ?? ($account['numero'] ?? ''));
+				$acc_label = $account['label'] ?? ($account['label_long'] ?? ($account['libelle'] ?? ''));
+				$accounts[] = array(
+					'id' => $acc_id,
+					'code' => $acc_code,
+					'label' => $acc_label,
+					'ref' => $account['ref'] ?? '',
+				);
+			}
+
+			if (!empty($accounts)) {
+				return $accounts;
+			}
+		}
+
+		return array();
+	}
+
+	/**
 	 * Get Dolibarr customers
 	 *
 	 * @param array $params Query parameters
